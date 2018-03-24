@@ -54,6 +54,24 @@ static noreturn void child_fn(uint64_t id, struct timespec* buf, uint64_t nrecor
   exit(EXIT_SUCCESS);
 }
 
+static void kill_all_children(pid_t* pids, uint64_t ncreated) {
+  for (uint64_t i = 0; i < ncreated; i++) {
+    pid_t pid = pids[i];
+    if (kill(pid, SIGINT) < 0) {
+      warn("kill(%d) failed", pid);
+    }
+  }
+}
+
+static void wait_all_children(pid_t* pids, uint64_t ncreated) {
+  for (uint64_t i = 0; i < ncreated; i++) {
+    pid_t pid = pids[i];
+    if (waitpid(pid, NULL, 0) < 0) {
+      warn("waitpid() failed");
+    }
+  }
+}
+
 int main(int argc, char** argv) {
   if (argc < 4) {
     fprintf(stderr, "Usage: %s <nproc> <total[ms]> <resolution[ms]>\n", argv[0]);
@@ -112,7 +130,8 @@ int main(int argc, char** argv) {
     pid_t pid = fork();
     pids[i] = pid;
     if (pid < 0) {
-      goto kill_children;
+      kill_all_children(pids, ncreated);
+      goto cleanup;
     }
 
     ncreated++;
@@ -121,24 +140,11 @@ int main(int argc, char** argv) {
       child_fn(i, logbuf, nrecord, nloop_per_resol, start);
     }
   }
-  goto wait_children;
 
-kill_children:
-  for (uint64_t i = 0; i < ncreated; i++) {
-    pid_t pid = pids[i];
-    if (kill(pid, SIGINT) < 0) {
-      warn("kill(%d) failed", pid);
-    }
-  }
-
-wait_children:
-  for (uint64_t i = 0; i < ncreated; i++) {
-    if (wait(NULL) < 0) {
-      warn("wait() failed");
-    }
-  }
-
+cleanup:
+  wait_all_children(pids, ncreated);
   free(pids);
   free(logbuf);
+
   return 0;
 }
