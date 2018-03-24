@@ -60,42 +60,46 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
-  int64_t nproc = strtol(argv[1], NULL, 10);
-  int64_t total = strtol(argv[2], NULL, 10);
-  int64_t resol = strtol(argv[3], NULL, 10);
+  int64_t nproc_parsed = strtol(argv[1], NULL, 10);
+  int64_t total_parsed = strtol(argv[2], NULL, 10);
+  int64_t resol_parsed = strtol(argv[3], NULL, 10);
 
-  if (nproc < 1) {
-    fprintf(stderr, "<nproc>(%ld) should be >= 1\n", nproc);
+  if (nproc_parsed < 1) {
+    fprintf(stderr, "<nproc>(%ld) should be >= 1\n", nproc_parsed);
     exit(EXIT_FAILURE);
   }
 
-  if (total < 1) {
-    fprintf(stderr, "<total>(%ld) should be >= 1\n", total);
+  if (total_parsed < 1) {
+    fprintf(stderr, "<total>(%ld) should be >= 1\n", total_parsed);
     exit(EXIT_FAILURE);
   }
 
-  if (resol < 1) {
-    fprintf(stderr, "<resol>(%ld) should be >= 1\n", resol);
+  if (resol_parsed < 1) {
+    fprintf(stderr, "<resol>(%ld) should be >= 1\n", resol_parsed);
     exit(EXIT_FAILURE);
   }
+
+  uint64_t nproc = (uint64_t)nproc_parsed;
+  uint64_t total = (uint64_t)total_parsed;
+  uint64_t resol = (uint64_t)resol_parsed;
 
   if (total % resol != 0) {
     fprintf(stderr, "<total>(%ld) should be multiple of <resolution>(%ld)\n", total, resol);
     exit(EXIT_FAILURE);
   }
 
-  int64_t nrecord = total / resol;
+  uint64_t nrecord = total / resol;
 
   puts("Estimating workload which takes just one millisecond");
-  uint64_t nloop_per_resol = loops_per_msec() * (uint64_t)resol;
+  uint64_t nloop_per_resol = loops_per_msec() * resol;
   fprintf(stdout, "End estimation; nloop_per_resol=%ld\n", nloop_per_resol);
 
-  pid_t* pids = calloc((uint64_t)nproc, sizeof(pid_t));
+  pid_t* pids = calloc(nproc, sizeof(pid_t));
   if (pids == NULL) {
     err(EXIT_FAILURE, "calloc (pids) failed");
   }
 
-  struct timespec* logbuf = calloc((uint64_t)nrecord, sizeof(struct timespec));
+  struct timespec* logbuf = calloc(nrecord, sizeof(struct timespec));
   if (logbuf == NULL) {
     err(EXIT_FAILURE, "calloc (logbuf) failed");
   }
@@ -104,7 +108,7 @@ int main(int argc, char** argv) {
   clock_gettime(CLOCK_MONOTONIC, &start);
 
   uint64_t ncreated = 0;
-  for (uint64_t i = 0; i < (uint64_t)nproc; i++) {
+  for (uint64_t i = 0; i < nproc; i++) {
     pid_t pid = fork();
     pids[i] = pid;
     if (pid < 0) {
@@ -114,7 +118,7 @@ int main(int argc, char** argv) {
     ncreated++;
 
     if (pid == 0) {
-      child_fn(i, logbuf, (uint64_t)nrecord, nloop_per_resol, start);
+      child_fn(i, logbuf, nrecord, nloop_per_resol, start);
     }
   }
   goto wait_children;
