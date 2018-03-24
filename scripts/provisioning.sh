@@ -16,3 +16,9 @@ apt-get install -y \
 #
 echo 'ENABLED="true"' > /etc/default/sysstat
 service sysstat restart
+
+#
+# disable hyper-threading
+#
+echo 0 > /sys/devices/system/cpu/cpu1/online
+echo 0 > /sys/devices/system/cpu/cpu3/online
