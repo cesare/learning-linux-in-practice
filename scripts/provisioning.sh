@@ -8,6 +8,7 @@ apt-get install -y \
   binutils \
   build-essential \
   clang-4.0 \
+  htop \
   silversearcher-ag \
   sysstat
 
