@@ -72,15 +72,16 @@ static void wait_all_children(pid_t* pids, uint64_t ncreated) {
   }
 }
 
-int main(int argc, char** argv) {
-  if (argc < 4) {
-    fprintf(stderr, "Usage: %s <nproc> <total[ms]> <resolution[ms]>\n", argv[0]);
-    exit(EXIT_FAILURE);
-  }
+typedef struct {
+  uint64_t nproc;
+  uint64_t resol;
+  uint64_t nrecord;
+} Config;
 
-  int64_t nproc_parsed = strtol(argv[1], NULL, 10);
-  int64_t total_parsed = strtol(argv[2], NULL, 10);
-  int64_t resol_parsed = strtol(argv[3], NULL, 10);
+static Config* parse_arguments(char* arg_nproc, char* arg_total, char* arg_resol) {
+  int64_t nproc_parsed = strtol(arg_nproc, NULL, 10);
+  int64_t total_parsed = strtol(arg_total, NULL, 10);
+  int64_t resol_parsed = strtol(arg_resol, NULL, 10);
 
   if (nproc_parsed < 1) {
     fprintf(stderr, "<nproc>(%ld) should be >= 1\n", nproc_parsed);
@@ -106,18 +107,30 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
-  uint64_t nrecord = total / resol;
+  Config* config = calloc(1, sizeof(Config));
+  config->nproc = nproc;
+  config->resol = resol;
+  config->nrecord = total / resol;
+  return config;
+}
+
+int main(int argc, char** argv) {
+  if (argc < 4) {
+    fprintf(stderr, "Usage: %s <nproc> <total[ms]> <resolution[ms]>\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+  Config* config = parse_arguments(argv[1], argv[2], argv[3]);
 
   puts("Estimating workload which takes just one millisecond");
-  uint64_t nloop_per_resol = loops_per_msec() * resol;
+  uint64_t nloop_per_resol = loops_per_msec() * config->resol;
   fprintf(stdout, "End estimation; nloop_per_resol=%ld\n", nloop_per_resol);
 
-  pid_t* pids = calloc(nproc, sizeof(pid_t));
+  pid_t* pids = calloc(config->nproc, sizeof(pid_t));
   if (pids == NULL) {
     err(EXIT_FAILURE, "calloc (pids) failed");
   }
 
-  struct timespec* logbuf = calloc(nrecord, sizeof(struct timespec));
+  struct timespec* logbuf = calloc(config->nrecord, sizeof(struct timespec));
   if (logbuf == NULL) {
     err(EXIT_FAILURE, "calloc (logbuf) failed");
   }
@@ -126,7 +139,7 @@ int main(int argc, char** argv) {
   clock_gettime(CLOCK_MONOTONIC, &start);
 
   uint64_t ncreated = 0;
-  for (uint64_t i = 0; i < nproc; i++) {
+  for (uint64_t i = 0; i < config->nproc; i++) {
     pid_t pid = fork();
     pids[i] = pid;
     if (pid < 0) {
@@ -137,7 +150,7 @@ int main(int argc, char** argv) {
     ncreated++;
 
     if (pid == 0) {
-      child_fn(i, logbuf, nrecord, nloop_per_resol, start);
+      child_fn(i, logbuf, config->nrecord, nloop_per_resol, start);
     }
   }
 
@@ -145,6 +158,7 @@ cleanup:
   wait_all_children(pids, ncreated);
   free(pids);
   free(logbuf);
+  free(config);
 
   return 0;
 }
