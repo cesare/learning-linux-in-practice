@@ -92,12 +92,12 @@ int main(int argc, char** argv) {
 
   pid_t* pids = calloc((uint64_t)nproc, sizeof(pid_t));
   if (pids == NULL) {
-    err(EXIT_FAILURE, "calloc (pids) failed: %d", errno);
+    err(EXIT_FAILURE, "calloc (pids) failed");
   }
 
   struct timespec* logbuf = calloc((uint64_t)nrecord, sizeof(struct timespec));
   if (logbuf == NULL) {
-    err(EXIT_FAILURE, "calloc (logbuf) failed: %d", errno);
+    err(EXIT_FAILURE, "calloc (logbuf) failed");
   }
 
   struct timespec start;
@@ -123,14 +123,14 @@ kill_children:
   for (uint64_t i = 0; i < ncreated; i++) {
     pid_t pid = pids[i];
     if (kill(pid, SIGINT) < 0) {
-      warn("kill(%d) failed: %d", pid, errno);
+      warn("kill(%d) failed", pid);
     }
   }
 
 wait_children:
   for (uint64_t i = 0; i < ncreated; i++) {
     if (wait(NULL) < 0) {
-      warn("wait() failed: %d", errno);
+      warn("wait() failed");
     }
   }
 
