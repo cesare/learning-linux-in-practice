@@ -1,11 +1,15 @@
 #include <err.h>
 #include <errno.h>
+#include <getopt.h>
 #include <inttypes.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
+#include <string.h>
+#include <strings.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -73,15 +77,104 @@ static void wait_all_children(pid_t* pids, uint64_t ncreated) {
 }
 
 typedef struct {
+  int32_t index_for_rest_args;
+  int8_t pad[2];
+  bool help;
+  bool verbose;
+} Options;
+
+typedef struct {
   uint64_t nproc;
   uint64_t resol;
   uint64_t nrecord;
+  int8_t pad[6];
+  bool help;
+  bool verbose;
 } Config;
 
-static Config* parse_arguments(char* arg_nproc, char* arg_total, char* arg_resol) {
-  int64_t nproc_parsed = strtol(arg_nproc, NULL, 10);
-  int64_t total_parsed = strtol(arg_total, NULL, 10);
-  int64_t resol_parsed = strtol(arg_resol, NULL, 10);
+static void show_usage(char** argv) {
+  fprintf(stderr, "Usage: %s [options] <nproc> <total[ms]> <resolution[ms]>\n", argv[0]);
+  fprintf(stderr, "Options:\n");
+  fprintf(stderr, "  --verbose=(true|false)\n");
+  fprintf(stderr, "  --help\n");
+}
+
+static bool parse_boolean_value(const char* str, bool default_value) {
+  if (str == NULL) {
+    return default_value;
+  }
+
+  /*
+   * patterns for true
+   */
+  if (strncasecmp(str, "true", 4) == 0) {
+    return true;
+  }
+  if (strncasecmp(str, "yes", 3) == 0) {
+    return true;
+  }
+  if (strncmp(str, "1", 1) == 0) {
+    return true;
+  }
+
+  /*
+   * patterns for false
+   */
+   if (strncasecmp(str, "false", 5) == 0) {
+     return false;
+   }
+   if (strncasecmp(str, "no", 2) == 0) {
+     return false;
+   }
+   if (strncmp(str, "0", 1) == 0) {
+     return false;
+   }
+
+   return default_value;
+}
+
+static void parse_options(int argc, char** argv, Options* options) {
+  struct option option_defs[] = {
+    {"help",          no_argument, NULL, 'h'},
+    {"verbose", optional_argument, NULL, 'v'},
+    {0, 0, 0, 0}
+  };
+
+  while (true) {
+    int32_t c = getopt_long(argc, argv, "hv+", option_defs, NULL);
+    if (c == -1) {
+      break;
+    }
+
+    switch (c) {
+      case 'h':
+        options->help = true;
+        break;
+      case 'v':
+        options->verbose = parse_boolean_value(optarg, true);
+        break;
+      default:
+        show_usage(argv);
+        exit(EXIT_FAILURE);
+    }
+  }
+
+  options->index_for_rest_args = optind;  // optind is a global variable
+}
+
+static Config* parse_arguments(int argc, char** argv) {
+  Options options = {.verbose = false, .help = false};
+  parse_options(argc, argv, &options);
+
+  int32_t offset = options.index_for_rest_args;
+  if (argc - offset != 3) {
+    show_usage(argv);
+    exit(EXIT_FAILURE);
+  }
+
+  int64_t nproc_parsed = strtol(argv[offset + 0], NULL, 10);
+  int64_t total_parsed = strtol(argv[offset + 1], NULL, 10);
+  int64_t resol_parsed = strtol(argv[offset + 2], NULL, 10);
 
   if (nproc_parsed < 1) {
     fprintf(stderr, "<nproc>(%ld) should be >= 1\n", nproc_parsed);
@@ -108,9 +201,14 @@ static Config* parse_arguments(char* arg_nproc, char* arg_total, char* arg_resol
   }
 
   Config* config = calloc(1, sizeof(Config));
-  config->nproc = nproc;
-  config->resol = resol;
+  if (config == NULL) {
+    err(EXIT_FAILURE, "calloc (Config) failed");
+  }
+  config->nproc   = nproc;
+  config->resol   = resol;
   config->nrecord = total / resol;
+  config->help    = options.help;
+  config->verbose = options.verbose;
   return config;
 }
 
@@ -123,11 +221,11 @@ static uint64_t estimate_loops_per_msec(Config* config) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 4) {
-    fprintf(stderr, "Usage: %s <nproc> <total[ms]> <resolution[ms]>\n", argv[0]);
-    exit(EXIT_FAILURE);
+  Config* config = parse_arguments(argc, argv);
+  if (config->help) {
+    show_usage(argv);
+    exit(EXIT_SUCCESS);
   }
-  Config* config = parse_arguments(argv[1], argv[2], argv[3]);
 
   uint64_t nloop_per_resol = estimate_loops_per_msec(config);
 
