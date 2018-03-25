@@ -213,9 +213,15 @@ static Config* parse_arguments(int argc, char** argv) {
 }
 
 static uint64_t estimate_loops_per_msec(Config* config) {
-  puts("Estimating workload which takes just one millisecond");
+  if (config->verbose) {
+    puts("Estimating workload which takes just one millisecond");
+  }
+
   uint64_t nloop_per_resol = loops_per_msec() * config->resol;
-  fprintf(stdout, "End estimation; nloop_per_resol=%ld\n", nloop_per_resol);
+
+  if (config->verbose) {
+    fprintf(stdout, "End estimation; nloop_per_resol=%ld\n", nloop_per_resol);
+  }
 
   return nloop_per_resol;
 }
