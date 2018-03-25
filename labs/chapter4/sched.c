@@ -114,6 +114,14 @@ static Config* parse_arguments(char* arg_nproc, char* arg_total, char* arg_resol
   return config;
 }
 
+static uint64_t estimate_loops_per_msec(Config* config) {
+  puts("Estimating workload which takes just one millisecond");
+  uint64_t nloop_per_resol = loops_per_msec() * config->resol;
+  fprintf(stdout, "End estimation; nloop_per_resol=%ld\n", nloop_per_resol);
+
+  return nloop_per_resol;
+}
+
 int main(int argc, char** argv) {
   if (argc < 4) {
     fprintf(stderr, "Usage: %s <nproc> <total[ms]> <resolution[ms]>\n", argv[0]);
@@ -121,9 +129,7 @@ int main(int argc, char** argv) {
   }
   Config* config = parse_arguments(argv[1], argv[2], argv[3]);
 
-  puts("Estimating workload which takes just one millisecond");
-  uint64_t nloop_per_resol = loops_per_msec() * config->resol;
-  fprintf(stdout, "End estimation; nloop_per_resol=%ld\n", nloop_per_resol);
+  uint64_t nloop_per_resol = estimate_loops_per_msec(config);
 
   pid_t* pids = calloc(config->nproc, sizeof(pid_t));
   if (pids == NULL) {
