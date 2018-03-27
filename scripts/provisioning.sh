@@ -9,6 +9,8 @@ apt-get install -y \
   build-essential \
   clang-4.0 \
   htop \
+  python3 \
+  python3-pip \
   silversearcher-ag \
   sysstat
 
@@ -23,3 +25,9 @@ service sysstat restart
 #
 echo 0 > /sys/devices/system/cpu/cpu1/online
 echo 0 > /sys/devices/system/cpu/cpu3/online
+
+#
+# install Python packages
+#
+pip3 install --upgrade pip
+pip3 install --requirement /tmp/python-requirements.txt

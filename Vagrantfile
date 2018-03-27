@@ -1,5 +1,6 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/xenial64"
+  config.vm.provision :file, source: "scripts/python-requirements.txt", destination: "/tmp/python-requirements.txt"
   config.vm.provision :shell, path: "scripts/provisioning.sh", privileged: true
   config.vm.synced_folder "./labs", "/home/vagrant/labs", owner: "vagrant", group: "vagrant"
 
