@@ -9,6 +9,7 @@ apt-get install -y \
   build-essential \
   clang-4.0 \
   htop \
+  lldb \
   python3 \
   python3-pip \
   silversearcher-ag \
