@@ -19,6 +19,9 @@ tsv: sched sched_nice
 	taskset -c 0 ./sched 1 100 1 > results/1core-1process.tsv
 	taskset -c 0 ./sched 2 100 1 > results/1core-2process.tsv
 	taskset -c 0 ./sched 4 100 1 > results/1core-4process.tsv
+	taskset -c 0,2 ./sched 1 100 1 > results/ex4-d.tsv
+	taskset -c 0,2 ./sched 2 100 1 > results/ex4-e.tsv
+	taskset -c 0,2 ./sched 4 100 1 > results/ex4-f.tsv
 	taskset -c 0 ./sched_nice 100 1 > results/sched_nice.tsv
 clean:
 	-rm -f $(EXECUTABLES)
